@@ -1,19 +1,15 @@
 package com.example.ledgerPrototype.consumers.impl;
 
-import com.example.ledgerPrototype.consumers.transConsumer;
+import com.example.ledgerPrototype.consumers.TransConsumer;
 import com.example.ledgerPrototype.dao.TransDAO;
 import com.example.ledgerPrototype.domain.TransDTO;
 import com.example.ledgerPrototype.mappers.TransDTOMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-
-import java.time.Instant;
 
 @Component
-public class AuditLog implements transConsumer {
+public class AuditLog implements TransConsumer {
 
     private TransDAO transDAO;
 

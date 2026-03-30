@@ -21,11 +21,17 @@ public class TransDTOMapper {
     }
 
     public static TransDTO mapDtoFromJson(String transJson){
-        JsonNode node = objectMapper.readTree(transJson);
+        JsonNode node;
+
+        try {
+            node = objectMapper.readTree(transJson);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to parse payload",e);
+        }
+
         Long id = node.hasNonNull("id") ? node.path("id").asLong() : null;
         Instant date_occur = node.hasNonNull("date_occur") ? Instant.parse(node.path("date_occur").textValue()) : null;
-
-        System.out.println(transJson);
 
         TransDTO transDTO = TransDTO.builder()
                 .id(id)
@@ -44,7 +50,13 @@ public class TransDTOMapper {
         String type;
         ObjectMapper objectMapper =  new ObjectMapper();
 
-        tree = objectMapper.readTree(transDTO.getPayload());
+        try {
+            tree = objectMapper.readTree(transDTO.getPayload());
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to parse payload",e);
+        }
+
         value = tree.path("amount").decimalValue();
         type = tree.path("type").textValue();
 

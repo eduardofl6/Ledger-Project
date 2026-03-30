@@ -1,6 +1,6 @@
 package com.example.ledgerPrototype.consumers.impl;
 
-import com.example.ledgerPrototype.consumers.transConsumer;
+import com.example.ledgerPrototype.consumers.TransConsumer;
 import com.example.ledgerPrototype.dao.TransDAO;
 import com.example.ledgerPrototype.domain.TransDTO;
 import com.example.ledgerPrototype.mappers.TransDTOMapper;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashSet;
 
 @Component
-public class BalanceProjector implements transConsumer {
+public class BalanceProjector implements TransConsumer {
 
     HashSet<String> transactionsHash = new HashSet<>();
 

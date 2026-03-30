@@ -6,20 +6,16 @@ import com.example.ledgerPrototype.domain.TransDTO;
 import com.example.ledgerPrototype.domain.TransDTOWeb;
 import com.example.ledgerPrototype.domain.TransLogDTO;
 import com.example.ledgerPrototype.mappers.TransDTOMapper;
-import com.example.ledgerPrototype.service.transCommand;
-import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
+import com.example.ledgerPrototype.service.TransCommand;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @RestController
 @RequestMapping("/account")
 public class AccountOperations {
@@ -27,31 +23,57 @@ public class AccountOperations {
     private final TransDAO transDAO;
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    private transCommand transCommand;
+    private TransCommand transCommand;
 
-    public AccountOperations(transCommand transCommand, TransDAO transDAO) {
+    public AccountOperations(TransCommand transCommand, TransDAO transDAO) {
         this.transCommand = transCommand;
         this.transDAO = transDAO;
     }
 
     @PostMapping("/operation")
     public ResponseEntity<String> operation(@RequestBody TransDTOWeb transaction){
+        String response = "";
+
+        if(transaction.getAccountId().isBlank()){
+            response = "AccountId can't be blank";
+            return new ResponseEntity<>(response,HttpStatus.BAD_REQUEST);
+        }
+
+        if(!(transaction.getType().equals("credit") || transaction.getType().equals("debit"))){
+            response = "Type must be credit or debit";
+            return new ResponseEntity<>(response,HttpStatus.BAD_REQUEST);
+        }
+
+        if(transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0){
+            response = "Amount must greater than zero";
+            return new ResponseEntity<>(response,HttpStatus.BAD_REQUEST);
+        }
+
+        String payload;
+        try{
+            payload = objectMapper.writeValueAsString(transaction);
+        }
+        catch (Exception e){
+            throw new RuntimeException("Failed to parse WebDto to String",e);
+        }
+
         TransDTO transactionDTO = TransDTO.builder()
-                .payload(objectMapper.writeValueAsString(transaction))
+                .payload(payload)
                 .accountId(transaction.getAccountId())
                 .build();
-        String response = "";
 
         BigDecimal balance = transCommand.reconstituteBalance(transactionDTO.getAccountId());
         BigDecimal transValue = TransDTOMapper.toType(transactionDTO);
 
         if(transCommand.checkFraudStatus(transactionDTO.getAccountId())){
-            response = "Account Locked (Fraud Suspicion)";
+            response += "Account Locked (Fraud Suspicion)";
             return new ResponseEntity<>(response,HttpStatus.UNPROCESSABLE_ENTITY);
-        }else if(balance.add(transValue).compareTo(BigDecimal.ZERO) <= 0){
+        }
+        if(balance.add(transValue).compareTo(BigDecimal.ZERO) <= 0){
             response = "Transaction unsuccessful (not enough balance)";
             return new ResponseEntity<>(response,HttpStatus.UNPROCESSABLE_ENTITY);
         }
+
 
         transCommand.operate(transactionDTO);
 
@@ -60,6 +82,11 @@ public class AccountOperations {
 
     @GetMapping("/{accountId}/balance")
     public ResponseEntity<AccountBalanceDTO> getBalance(@PathVariable String accountId){
+        if ((transCommand.checkAccount(accountId).isEmpty())){
+            return new ResponseEntity<>(AccountBalanceDTO.builder()
+                    .accountId("Account doesn't exist").balance(BigDecimal.valueOf(-1
+                    )).build(),HttpStatus.NOT_FOUND);
+        }
         Optional<AccountBalanceDTO> balance = transCommand.consultBalance(accountId);
 
         if(balance.isPresent()){
@@ -71,6 +98,9 @@ public class AccountOperations {
 
     @GetMapping("/{accountId}/transactions")
     public ResponseEntity<List<TransLogDTO>> getTransactions(@PathVariable String accountId){
+        if ((transCommand.checkAccount(accountId).isEmpty()))
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
         List<TransLogDTO> transactions = transCommand.consultHistory(accountId);
 
         if(transactions.isEmpty()){

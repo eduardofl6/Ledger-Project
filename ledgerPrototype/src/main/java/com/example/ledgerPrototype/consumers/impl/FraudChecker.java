@@ -1,11 +1,10 @@
 package com.example.ledgerPrototype.consumers.impl;
 
-import com.example.ledgerPrototype.consumers.transConsumer;
+import com.example.ledgerPrototype.consumers.TransConsumer;
 import com.example.ledgerPrototype.dao.TransDAO;
 import com.example.ledgerPrototype.domain.TransDTO;
 import com.example.ledgerPrototype.domain.TransFraudDTO;
 import com.example.ledgerPrototype.mappers.TransDTOMapper;
-import lombok.extern.apachecommons.CommonsLog;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,7 +16,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Component
-public class FraudChecker implements transConsumer {
+public class FraudChecker implements TransConsumer {
 
     @Autowired
     private TransDAO transDAO;
@@ -29,8 +28,15 @@ public class FraudChecker implements transConsumer {
     @KafkaListener(topics="ledger.transactions", groupId = "transaction-fraud-checker")
     public void listenEvent(ConsumerRecord<String, String> record) {
         TransDTO transDTO = TransDTOMapper.mapDtoFromJson(record.value());
+        BigDecimal amount;
 
-        BigDecimal amount = objectMapper.readTree(transDTO.getPayload()).path("amount").decimalValue();
+        try {
+            amount = objectMapper.readTree(transDTO.getPayload()).path("amount").decimalValue();
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to parse payload",e);
+        }
+
         BigDecimal currentBalance = transDTO.getCurrentBalance();
         String warningDesc = "";
 
@@ -58,7 +64,7 @@ public class FraudChecker implements transConsumer {
     public boolean manyTransUnderTime(TransDTO transDTO) {
         List<TransDTO> transactions = transDAO.findTransOneMinute(transDTO);
 
-        if(transactions.stream().count() >= 3) {
+        if(transactions.size() >= 3) {
             return true;
         }else  {
             return false;
@@ -76,7 +82,7 @@ public class FraudChecker implements transConsumer {
         List<TransDTO> transactions = transDAO.findLastX(5, transDTO.getAccountId());
 
         if (transactions.stream().allMatch(transDtoStrm ->
-                extractAmountFromTransaction(transDtoStrm).compareTo(amount) == 0)){
+                extractAmountFromTransaction(transDtoStrm).compareTo(amount) == 0) && transactions.size() == 5){
             return true;
         }else {
             return false;
@@ -84,15 +90,18 @@ public class FraudChecker implements transConsumer {
     }
 
     public BigDecimal extractAmountFromTransaction(TransDTO transDTO) {
-        try{
+
             BigDecimal amount;
-            JsonNode tree = objectMapper.readTree(transDTO.getPayload());
+            JsonNode tree;
+            try {
+                tree = objectMapper.readTree(transDTO.getPayload());
+            }
+            catch (Exception e) {
+                throw new RuntimeException("Failed to parse payload",e);
+            }
             amount = tree.path("amount").decimalValue();
 
             return amount;
-        } catch(Exception e){
-            throw new RuntimeException(e);
-        }
     }
 
 }

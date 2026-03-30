@@ -96,7 +96,7 @@ public class TransDaoImpl implements TransDAO {
 
     @Override
     public List<TransDTO> findAllOutBox(){
-        List<TransDTO> transactions = jdbcTemplate.query("SELECT id, accountId, date_occur, payload, id FROM transOutBox WHERE published = ?",
+        List<TransDTO> transactions = jdbcTemplate.query("SELECT id, accountId, date_occur, payload FROM transOutBox WHERE published = ?",
                 new TransDTORowMapper() ,false);
 
         return transactions;
@@ -143,10 +143,10 @@ public class TransDaoImpl implements TransDAO {
 
     @Override
     public String checkAcount(String accountId){
-        String accountFoundId = "";
-        accountFoundId = accountFoundId + jdbcTemplate.queryForObject("SELECT max(accountId) FROM transEventStored WHERE accountId = ?", String.class, accountId);
+        String accountFoundId;
+        accountFoundId = jdbcTemplate.queryForObject("SELECT max(accountId) FROM transEventStored WHERE accountId = ?", String.class, accountId);
 
-        return accountFoundId;
+        return accountFoundId == null ? "" : accountFoundId;
     }
 
 }
