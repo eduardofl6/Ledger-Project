@@ -1,7 +1,9 @@
 
 # Event-Driven Ledger
+*Event-Driven Modular Monolith utilizing CQRS, Event Sourcing, and the Transactional Outbox pattern*
 
 An event-driven financial ledger demonstrating distributed system patterns and solid data consistency.
+
 
 This project was made to highlight how an event-driven application works in an asynchronous processing manner, being able to prevent dual-write failures and ensure robust data consistency for financial transactions.
  
